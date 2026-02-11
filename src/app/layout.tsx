@@ -4,6 +4,8 @@ import "./globals.css";
 
 import ReduxProvider from "@/providers/ReduxProvider";
 import { PHProvider } from "@/providers/PHProvider";
+import Navbar from "@/components/layout/Navbar";
+import Footer from "@/components/layout/Footer";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -16,8 +18,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "SaaS Automation Platform",
-  description: "End-to-end automation for your business",
+  title: "Nexaflow | Next-Gen Business Automation",
+  description: "Scale your revenue with AI-driven lead capture and seamless workflow orchestration.",
 };
 
 export default function RootLayout({
@@ -32,7 +34,9 @@ export default function RootLayout({
       >
         <ReduxProvider>
           <PHProvider>
-            {children}
+            <Navbar />
+            <main>{children}</main>
+            <Footer />
           </PHProvider>
         </ReduxProvider>
       </body>

@@ -1,28 +1,22 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useAppDispatch, useAppSelector } from '@/redux/hooks';
-import { fetchLeads } from '@/redux/slices/leadSlice';
+import { fetchLeads, updateLeadStatus } from '@/redux/slices/leadSlice';
 import { logout, updateProfile, getMe } from '@/redux/slices/authSlice';
 import { fetchWebsites, fetchLogs, addWebsite, deleteWebsite } from '@/redux/slices/appSlice';
 import { fetchAdminStats, fetchAllUsers, updateUserPlan } from '@/redux/slices/adminSlice';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { LogOut, Users, Zap, BarChart3, Settings, CreditCard, Copy, CheckCircle, RefreshCcw, Download, Globe, FileText, Phone, ChevronRight, LayoutDashboard, X, ShieldCheck, Activity, DollarSign } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import PricingSection from '@/components/dashboard/PricingSection';
 import AnalyticsChart from '@/components/dashboard/AnalyticsChart';
 import RevenueChart from '@/components/admin/RevenueChart';
+import BrandLogo from '@/components/brand/BrandLogo';
 
 
-const TREND_DATA = [
-    { name: 'Mon', leads: 4 },
-    { name: 'Tue', leads: 3 },
-    { name: 'Wed', leads: 2 },
-    { name: 'Thu', leads: 7 },
-    { name: 'Fri', leads: 5 },
-    { name: 'Sat', leads: 8 },
-    { name: 'Sun', leads: 12 },
-];
+// ... (imports remain same)
 
 export default function DashboardPage() {
     const dispatch = useAppDispatch();
@@ -37,6 +31,31 @@ export default function DashboardPage() {
     const [isAddWebsiteModalOpen, setIsAddWebsiteModalOpen] = useState(false);
     const [newWebsite, setNewWebsite] = useState({ name: '', url: '' });
     const [profileData, setProfileData] = useState({ name: user?.name || '' });
+    const [isSubmittingSite, setIsSubmittingSite] = useState(false);
+    const [selectedWebsiteForGuide, setSelectedWebsiteForGuide] = useState<any>(null);
+
+    // Generate dynamic trend data from leads
+    const trendData = useMemo(() => {
+        if (!leads) return [];
+        const last7Days = Array.from({ length: 7 }, (_, i) => {
+            const d = new Date();
+            d.setDate(d.getDate() - (6 - i));
+            return d.toISOString().split('T')[0];
+        });
+
+        return last7Days.map(date => {
+            const dayLeads = leads.filter((l: any) => new Date(l.createdAt).toISOString().startsWith(date)).length;
+            return {
+                name: new Date(date).toLocaleDateString('en-US', { weekday: 'short' }),
+                leads: dayLeads
+            };
+        });
+    }, [leads]);
+
+    useEffect(() => {
+        if (user) setProfileData({ name: user.name });
+    }, [user]);
+
     useEffect(() => {
         // If still checking auth, do nothing
         if (isCheckingAuth) return;
@@ -79,16 +98,13 @@ export default function DashboardPage() {
         );
     }
 
-    useEffect(() => {
-        if (user) setProfileData({ name: user.name });
-    }, [user]);
+    if (!user) return null;
+
 
     const copyToClipboard = (text: string) => {
         navigator.clipboard.writeText(text);
         alert('API Key copied to clipboard!');
     };
-
-    const [isSubmittingSite, setIsSubmittingSite] = useState(false);
 
     const handleAddWebsite = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -158,7 +174,6 @@ export default function DashboardPage() {
         await dispatch(updateUserPlan({ userId, plan }));
     };
 
-    const [selectedWebsiteForGuide, setSelectedWebsiteForGuide] = useState<any>(null);
 
     return (
         <div className="h-screen overflow-hidden bg-[#020617] text-slate-100 flex font-sans selection:bg-orange-500/30">
@@ -167,15 +182,9 @@ export default function DashboardPage() {
             {/* Sidebar */}
             <aside className="w-72 h-full bg-slate-950/40 backdrop-blur-xl border-r border-slate-800/50 flex flex-col z-20 overflow-hidden">
                 <div className="p-8">
-                    <div className="flex items-center space-x-3 group cursor-pointer">
-                        <div className="relative w-32 h-32 group-hover:scale-105 transition-transform duration-300">
-                            <img
-                                src="/logo.jpg"
-                                alt="AutoSAAS Logo"
-                                className="w-full h-full object-contain filter drop-shadow-[0_0_8px_rgba(249,115,22,0.3)]"
-                            />
-                        </div>
-                    </div>
+                    <Link href="/" className="transition-transform active:scale-95">
+                        <BrandLogo />
+                    </Link>
                 </div>
 
                 <nav className="flex-1 px-4 space-y-1.5 overflow-y-auto pt-4">
@@ -347,7 +356,7 @@ export default function DashboardPage() {
                                             </div>
                                             <div className="h-[340px] w-full">
                                                 <AnalyticsChart
-                                                    data={TREND_DATA}
+                                                    data={trendData}
                                                     dataKey="leads"
                                                     color="#f97316"
                                                 />
@@ -444,8 +453,12 @@ export default function DashboardPage() {
                                                             <td className="px-8 py-6 font-bold text-slate-100 group-hover:text-orange-500 transition-colors uppercase tracking-tight">{lead.name}</td>
                                                             <td className="px-8 py-6">
                                                                 <div className="flex flex-col">
-                                                                    <span className="text-xs font-bold text-slate-300">{lead.phone}</span>
-                                                                    <span className="text-[10px] text-slate-600 font-medium group-hover:text-slate-500 transition-colors">{lead.email}</span>
+                                                                    <a href={`tel:${lead.phone}`} className="text-xs font-bold text-slate-300 hover:text-orange-400 transition-colors flex items-center gap-1">
+                                                                        <Phone size={10} /> {lead.phone}
+                                                                    </a>
+                                                                    <a href={`mailto:${lead.email}`} className="text-[10px] text-slate-600 font-medium group-hover:text-slate-500 transition-colors hover:underline">
+                                                                        {lead.email}
+                                                                    </a>
                                                                 </div>
                                                             </td>
                                                             <td className="px-8 py-6">
@@ -454,11 +467,19 @@ export default function DashboardPage() {
                                                                 </span>
                                                             </td>
                                                             <td className="px-8 py-6">
-                                                                <div className="flex items-center gap-2.5">
+                                                                <div className="flex items-center gap-2.5 relative group/status">
                                                                     <div className={`w-1.5 h-1.5 rounded-full ${lead.status === 'processed' ? 'bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.5)]' : 'bg-orange-500 animate-pulse'}`} />
-                                                                    <span className={`text-[10px] font-black uppercase tracking-widest ${lead.status === 'processed' ? 'text-green-500' : 'text-orange-500'}`}>
-                                                                        {lead.status}
-                                                                    </span>
+                                                                    <select
+                                                                        value={lead.status}
+                                                                        onChange={(e) => dispatch(updateLeadStatus({ id: lead._id, status: e.target.value }))}
+                                                                        className="bg-transparent text-[10px] font-black uppercase tracking-widest outline-none cursor-pointer hover:text-white transition-colors appearance-none pr-4"
+                                                                        style={{ color: lead.status === 'processed' ? '#22c55e' : '#f97316' }}
+                                                                    >
+                                                                        <option value="new">New</option>
+                                                                        <option value="contacted">Contacted</option>
+                                                                        <option value="processed">Processed</option>
+                                                                        <option value="lost">Lost</option>
+                                                                    </select>
                                                                 </div>
                                                             </td>
                                                             <td className="px-8 py-6">

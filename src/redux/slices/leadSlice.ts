@@ -34,6 +34,15 @@ export const fetchLeads = createAsyncThunk('leads/fetchAll', async (_, { rejectW
     }
 });
 
+export const updateLeadStatus = createAsyncThunk('leads/updateStatus', async ({ id, status }: { id: string, status: string }, { rejectWithValue }) => {
+    try {
+        const response = await api.put(`/leads/${id}`, { status });
+        return response.data;
+    } catch (err: any) {
+        return rejectWithValue(err.response?.data?.message || 'Failed to update lead');
+    }
+});
+
 const leadSlice = createSlice({
     name: 'leads',
     initialState,
@@ -50,6 +59,12 @@ const leadSlice = createSlice({
             .addCase(fetchLeads.rejected, (state, action) => {
                 state.isLoading = false;
                 state.error = action.payload as string;
+            })
+            .addCase(updateLeadStatus.fulfilled, (state, action) => {
+                const index = state.leads.findIndex(l => l._id === action.payload._id);
+                if (index !== -1) {
+                    state.leads[index] = action.payload;
+                }
             });
     },
 });

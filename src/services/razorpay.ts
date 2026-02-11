@@ -40,6 +40,7 @@ export const processPayment = async (orderData: { amount: number; planId: string
                     razorpay_order_id: response.razorpay_order_id,
                     razorpay_payment_id: response.razorpay_payment_id,
                     razorpay_signature: response.razorpay_signature,
+                    planId: orderData.planId,
                 });
 
                 if (verifyRes.data.success) {
