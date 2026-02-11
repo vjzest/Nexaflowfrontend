@@ -4,9 +4,9 @@ import { motion } from 'framer-motion';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { CheckCircle2, ArrowRight, Download, Mail, Calendar, CreditCard, Package, Sparkles } from 'lucide-react';
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, Suspense } from 'react';
 
-export default function PaymentSuccessPage() {
+function PaymentSuccessContent() {
     const searchParams = useSearchParams();
     const router = useRouter();
     const [orderDetails, setOrderDetails] = useState({
@@ -245,5 +245,20 @@ export default function PaymentSuccessPage() {
                 </motion.div>
             </div>
         </div>
+    );
+}
+
+export default function PaymentSuccessPage() {
+    return (
+        <Suspense fallback={
+            <div className="min-h-screen bg-slate-950 text-white font-[family-name:var(--font-geist-sans)] flex items-center justify-center">
+                <div className="text-center">
+                    <div className="w-16 h-16 border-4 border-orange-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+                    <p className="text-slate-400">Loading payment details...</p>
+                </div>
+            </div>
+        }>
+            <PaymentSuccessContent />
+        </Suspense>
     );
 }
