@@ -926,18 +926,19 @@ export default function DashboardPage() {
 
         const payload = {
             apiKey: API_KEY,
-            name: data.name || data.fullname || data.user_name || 'Anonymous Lead',
+            name: data.name || data.fullname || data.fullName || data.user_name || 'Anonymous Lead',
             email: data.email || data.user_email || '',
-            phone: data.phone || data.mobile || data.tel || '',
-            source: window.location.hostname,
+            phone: data.phone || data.mobile || data.whatsappNumber || data.tel || '',
+            source: window.location.hostname + window.location.pathname,
             data: data
         };
 
-        if (payload.email || payload.phone) {
+        if (payload.email || payload.phone || data.message || data.description) {
             fetch(API_URL, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
+                body: JSON.stringify(payload),
+                keepalive: true
             }).then(r => r.json()).then(res => {
                 console.log('AutoSAAS: Lead synced');
             }).catch(console.error);
@@ -948,7 +949,7 @@ export default function DashboardPage() {
                                         </pre>
                                         <button
                                             onClick={() => {
-                                                const script = `/* AutoSAAS Universal Lead Tracker */\n(function() {\n    const API_KEY = '${selectedWebsiteForGuide.apiKey}';\n    const API_URL = '${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'}/leads/capture';\n\n    window.addEventListener('submit', function(e) {\n        const form = e.target;\n        if (!form) return;\n\n        const formData = new FormData(form);\n        const data = {};\n        formData.forEach((value, key) => { data[key] = value; });\n\n        const payload = {\n            apiKey: API_KEY,\n            name: data.name || data.fullname || data.user_name || 'Anonymous Lead',\n            email: data.email || data.user_email || '',\n            phone: data.phone || data.mobile || data.tel || '',\n            source: window.location.hostname,\n            data: data\n        };\n\n        if (payload.email || payload.phone) {\n            fetch(API_URL, {\n                method: 'POST',\n                headers: { 'Content-Type': 'application/json' },\n                body: JSON.stringify(payload)\n            }).then(r => r.json()).then(res => {\n                console.log('AutoSAAS: Lead synced');\n            }).catch(console.error);\n        }\n    }, true);\n})();`;
+                                                const script = `/* AutoSAAS Universal Lead Tracker */\n(function() {\n    const API_KEY = '${selectedWebsiteForGuide.apiKey}';\n    const API_URL = '${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'}/leads/capture';\n\n    window.addEventListener('submit', function(e) {\n        const form = e.target;\n        if (!form) return;\n\n        const formData = new FormData(form);\n        const data = {};\n        formData.forEach((value, key) => { data[key] = value; });\n\n        const payload = {\n            apiKey: API_KEY,\n            name: data.name || data.fullname || data.fullName || data.user_name || 'Anonymous Lead',\n            email: data.email || data.user_email || '',\n            phone: data.phone || data.mobile || data.whatsappNumber || data.tel || '',\n            source: window.location.hostname + window.location.pathname,\n            data: data\n        };\n\n        if (payload.email || payload.phone || data.message || data.description) {\n            fetch(API_URL, {\n                method: 'POST',\n                headers: { 'Content-Type': 'application/json' },\n                body: JSON.stringify(payload),\n                keepalive: true\n            }).then(r => r.json()).then(res => {\n                console.log('AutoSAAS: Lead synced');\n            }).catch(console.error);\n        }\n    }, true);\n})();`;
                                                 navigator.clipboard.writeText(`<script>\n${script}\n</script>`);
                                                 alert('Script copied to clipboard!');
                                             }}
