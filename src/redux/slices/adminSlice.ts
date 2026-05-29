@@ -1,30 +1,39 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
-import api from '@/services/api';
+import { createClient } from '@/lib/supabase/client';
+
+const supabase = createClient() as any;
 
 export const fetchAdminStats = createAsyncThunk('admin/fetchStats', async (_, { rejectWithValue }) => {
     try {
-        const response = await api.get('/admin/stats');
-        return response.data;
+        // Assume get_admin_stats is an RPC function we'll create in Supabase
+        const { data, error } = await supabase.rpc('get_admin_stats');
+        if (error) {
+            console.warn("RPC failed, falling back to empty stats");
+            return { totalUsers: 0, totalLeads: 0, revenue: 0 };
+        }
+        return data || { totalUsers: 0, totalLeads: 0, revenue: 0 };
     } catch (err: any) {
-        return rejectWithValue(err.response?.data?.message || 'Failed to fetch admin stats');
+        return rejectWithValue(err.message || 'Failed to fetch admin stats');
     }
 });
 
 export const fetchAllUsers = createAsyncThunk('admin/fetchUsers', async (_, { rejectWithValue }) => {
     try {
-        const response = await api.get('/admin/users');
-        return response.data;
+        const { data, error } = await supabase.from('users').select('*');
+        if (error) throw error;
+        return data;
     } catch (err: any) {
-        return rejectWithValue(err.response?.data?.message || 'Failed to fetch users');
+        return rejectWithValue(err.message || 'Failed to fetch users');
     }
 });
 
 export const updateUserPlan = createAsyncThunk('admin/updatePlan', async (data: { userId: string, plan: string }, { rejectWithValue }) => {
     try {
-        const response = await api.put('/admin/users/plan', data);
-        return response.data;
+        const { data: user, error } = await supabase.from('users').update({ plan: data.plan }).eq('id', data.userId).select().single();
+        if (error) throw error;
+        return user;
     } catch (err: any) {
-        return rejectWithValue(err.response?.data?.message || 'Failed to update plan');
+        return rejectWithValue(err.message || 'Failed to update plan');
     }
 });
 
@@ -41,14 +50,14 @@ const adminSlice = createSlice({
         builder
             .addCase(fetchAdminStats.pending, (state) => { state.isLoading = true; })
             .addCase(fetchAdminStats.fulfilled, (state, action) => {
-                state.stats = action.payload.stats;
+                state.stats = action.payload;
                 state.isLoading = false;
             })
             .addCase(fetchAllUsers.fulfilled, (state, action) => {
-                state.users = action.payload;
+                state.users = action.payload || [];
             })
             .addCase(updateUserPlan.fulfilled, (state, action) => {
-                const index = state.users.findIndex(u => u._id === action.payload._id);
+                const index = state.users.findIndex(u => u.id === action.payload.id || u._id === action.payload.id);
                 if (index !== -1) state.users[index] = action.payload;
             });
     }

@@ -1,5 +1,7 @@
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
-import api from '@/services/api';
+import { createClient } from '@/lib/supabase/client';
+
+const supabase = createClient() as any;
 
 interface AuthState {
     user: any | null;
@@ -19,10 +21,17 @@ export const login = createAsyncThunk(
     'auth/login',
     async (credentials: any, { rejectWithValue }) => {
         try {
-            const response = await api.post('/auth/login', credentials);
-            return response.data;
+            const { data, error } = await supabase.auth.signInWithPassword({
+                email: credentials.email,
+                password: credentials.password,
+            });
+            if (error) throw error;
+            
+            // Get profile for the plan
+            const { data: profile } = await supabase.from('users').select('*').eq('id', data.user.id).single();
+            return { ...data.user, ...profile };
         } catch (err: any) {
-            return rejectWithValue(err.response?.data?.message || 'Login failed');
+            return rejectWithValue(err.message || 'Login failed');
         }
     }
 );
@@ -31,16 +40,31 @@ export const register = createAsyncThunk(
     'auth/register',
     async (userData: any, { rejectWithValue }) => {
         try {
-            const response = await api.post('/auth/register', userData);
-            return response.data;
+            const { data, error } = await supabase.auth.signUp({
+                email: userData.email,
+                password: userData.password,
+                options: {
+                    data: {
+                        name: userData.name,
+                    },
+                },
+            });
+            if (error) throw error;
+            
+            if (data.user) {
+                // Initialize profile in public table
+                await supabase.from('users').upsert({ id: data.user.id, email: data.user.email, name: userData.name, plan: 'Free' });
+            }
+            
+            return data.user;
         } catch (err: any) {
-            return rejectWithValue(err.response?.data?.message || 'Registration failed');
+            return rejectWithValue(err.message || 'Registration failed');
         }
     }
 );
 
 export const logout = createAsyncThunk('auth/logout', async () => {
-    await api.post('/auth/logout');
+    await supabase.auth.signOut();
     return null;
 });
 
@@ -48,20 +72,28 @@ export const updateProfile = createAsyncThunk(
     'auth/updateProfile',
     async (userData: any, { rejectWithValue }) => {
         try {
-            const response = await api.put('/auth/profile', userData);
-            return response.data;
+            const { data, error } = await supabase.auth.updateUser({
+                data: userData,
+            });
+            if (error) throw error;
+            return data.user;
         } catch (err: any) {
-            return rejectWithValue(err.response?.data?.message || 'Update failed');
+            return rejectWithValue(err.message || 'Update failed');
         }
     }
 );
 
 export const getMe = createAsyncThunk('auth/getMe', async (_, { rejectWithValue }) => {
     try {
-        const response = await api.get('/auth/me');
-        return response.data;
+        const { data: { user }, error } = await supabase.auth.getUser();
+        if (error || !user) throw error;
+        
+        // Fetch custom profile data (like plan) from public.users table
+        const { data: profile } = await supabase.from('users').select('*').eq('id', user.id).single();
+        
+        return { ...user, ...profile };
     } catch (err: any) {
-        return rejectWithValue(err.response?.data?.message || 'Not authenticated');
+        return rejectWithValue(err.message || 'Not authenticated');
     }
 });
 

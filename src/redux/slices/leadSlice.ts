@@ -1,8 +1,11 @@
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
-import api from '@/services/api';
+import { createClient } from '@/lib/supabase/client';
+
+const supabase = createClient() as any;
 
 interface Lead {
-    _id: string;
+    id: string;
+    _id?: string;
     name: string;
     email?: string;
     phone: string;
@@ -27,19 +30,21 @@ const initialState: LeadState = {
 
 export const fetchLeads = createAsyncThunk('leads/fetchAll', async (_, { rejectWithValue }) => {
     try {
-        const response = await api.get('/leads');
-        return response.data;
+        const { data, error } = await supabase.from('leads').select('*');
+        if (error) throw error;
+        return data;
     } catch (err: any) {
-        return rejectWithValue(err.response?.data?.message || 'Failed to fetch leads');
+        return rejectWithValue(err.message || 'Failed to fetch leads');
     }
 });
 
 export const updateLeadStatus = createAsyncThunk('leads/updateStatus', async ({ id, status }: { id: string, status: string }, { rejectWithValue }) => {
     try {
-        const response = await api.put(`/leads/${id}`, { status });
-        return response.data;
+        const { data, error } = await supabase.from('leads').update({ status }).eq('id', id).select().single();
+        if (error) throw error;
+        return data;
     } catch (err: any) {
-        return rejectWithValue(err.response?.data?.message || 'Failed to update lead');
+        return rejectWithValue(err.message || 'Failed to update lead');
     }
 });
 
@@ -54,14 +59,14 @@ const leadSlice = createSlice({
             })
             .addCase(fetchLeads.fulfilled, (state, action) => {
                 state.isLoading = false;
-                state.leads = action.payload;
+                state.leads = action.payload || [];
             })
             .addCase(fetchLeads.rejected, (state, action) => {
                 state.isLoading = false;
                 state.error = action.payload as string;
             })
             .addCase(updateLeadStatus.fulfilled, (state, action) => {
-                const index = state.leads.findIndex(l => l._id === action.payload._id);
+                const index = state.leads.findIndex(l => l.id === action.payload.id || l._id === action.payload.id);
                 if (index !== -1) {
                     state.leads[index] = action.payload;
                 }
